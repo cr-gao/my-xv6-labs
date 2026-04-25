@@ -274,6 +274,7 @@ fork(void)
     return -1;
   }
   np->sz = p->sz;
+  np->mask = p->mask;
 
   np->parent = p;
 
@@ -692,4 +693,20 @@ procdump(void)
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
   }
+}
+
+// Count the number of active processes.
+int count_active_procs() {
+  int count = 0;
+  struct proc *p;
+  
+  for(p = proc; p < &proc[NPROC]; p++) {
+    acquire(&p->lock);
+    if(p->state != UNUSED) {
+      count++;
+    }
+    release(&p->lock);
+  }
+
+  return count;
 }

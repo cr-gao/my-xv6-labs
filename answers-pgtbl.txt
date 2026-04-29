@@ -1,0 +1,30 @@
+Question: Explain why the third test srcva + len < srcva is necessary in copyin_new(): give values for srcva and len for which the first two test fail (i.e., they will not cause to return -1) but for which the third one is true (resulting in returning -1).
+
+Answer:
+The third test is necessary to prevent integer overflow (wrap-around) vulnerabilities. 
+
+In xv6, variables like srcva and len are represented as 64-bit unsigned integers (uint64). If a malicious or buggy user program passes an extremely large value for len, the sum of (srcva + len) can exceed the maximum capacity of a 64-bit unsigned integer (2^64 - 1). When this happens, the value "wraps around" and becomes a very small number. 
+
+Without the third test, this small, wrapped-around number would bypass the second test (srcva + len >= p->sz), tricking the kernel into thinking the memory range is perfectly valid, which could lead to unauthorized memory access or kernel crashes. The third test specifically catches this wrap-around condition.
+
+Example Values:
+Assume the process size (p->sz) is 4096 (0x1000).
+- srcva = 100
+- len = 0xFFFFFFFFFFFFFFFF (the maximum 64-bit unsigned integer)
+
+Let's evaluate the three tests with these values:
+
+1. srcva >= p->sz 
+   100 >= 4096 
+   Result: False. (Does not return -1)
+
+2. srcva + len >= p->sz
+   100 + 0xFFFFFFFFFFFFFFFF = 99 (due to 64-bit integer overflow)
+   99 >= 4096
+   Result: False. (Does not return -1. The kernel is tricked into thinking the end address is 99, which is within bounds.)
+
+3. srcva + len < srcva
+   99 < 100
+   Result: True. (Returns -1)
+
+Conclusion: The first two tests fail to detect the invalid range due to the overflow, but the third test successfully detects the wrap-around because the resulting sum (99) is strictly less than the original starting address (100).
